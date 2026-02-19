@@ -1,0 +1,48 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /notification-service
+
+spring:
+  application:
+    name: notification-service
+
+  # --- Kafka Consumer Configuration ---
+  kafka:
+    bootstrap-servers: kafka:19092
+    consumer:
+      # Consumer Group ID: All instances of notification-service share this to balance load
+      group-id: notification-group
+      # Auto-offset reset: 'earliest' means if a new group starts, it reads from the beginning of the topic
+      auto-offset-reset: earliest
+      # Key deserializer (matches the StringSerializer used in the producer)
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Value deserializer: Uses Spring's ErrorHandlingDeserializer to wrap JsonDeserializer
+      # This prevents "Poison Pill" messages (malformed JSON) from stopping the consumer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+
+    properties:
+      # Configure the delegate JsonDeserializer
+      spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+      # Allow deserialization of DTOs from the common library package
+      spring.json.trusted.packages: "com.mylearn.common.event"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose only health for security; metrics/info can be added later
+        include: health
+  endpoint:
+    health:
+      # Enables /actuator/health/liveness and /actuator/health/readiness
+      probes:
+        enabled: true
+      # Shows detailed health info (useful for debugging, can be restricted in prod)
+      show-details: always
+
+# --- App Specific Configuration ---
+app:
+  kafka:
+    topic:
+      payment-events: payment.v1.events
